@@ -1,14 +1,16 @@
 export interface IProduct { 
   id: string; 
-  name: string; 
+  title: string; 
   price: number | null; 
   description?: string; 
   category?: string; 
-  image?: string; }
+  image?: string;
+}
   
 export interface IAppState {
   catalog: IProduct [];
-  basket: string[];
+  basketList: IProduct [];
+  // basket: string[];
   preview: string | null;
   order: IOrder | null;
 }
