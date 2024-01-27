@@ -45,21 +45,93 @@ npm run build
 yarn build
 ```
 
-Базовые компоненты
+В проекте реализован паттерн MVP.
+Тип Presenter (Представитель), который служит «прослойкой» между типами Model и View, предствлен классом EventEmitter.
+Реализует паттерн «Наблюдатель» и позволяет подписываться на события и уведомлять подписчиков о наступлении события. А так же передавать актуальные данные в обработчик.
 
-1.Класс Component
-Абстрактный класс для реализации отображения компонентов приложения: модального окна с карточкой, модального окна корзины и др.
+Имплементирует интерфес: interface IEvents {
+on<T extends object>(event: EventName, callback: (data: T) => void): void;
+emit<T extends object>(event: string, data?: T): void;
+trigger<T extends object>(event: string, context?: Partial<T>): (data: T) => void;
+}
+
 Поля:
-o protected readonly container: HTMLElement
+o protected events: Map<string, Set<EventHandler>>
 
 Методы:
-• toggleClass - Переключить класс
-• protected setText - Установить текстовое содержимое
-• setDisabled - Сменить статус блокировки
-• protected setImage - Установить изображение с алтернативным текстом
-• render - Вернуть корневой DOM-элемент
+• On – для подписки на событие
+• Off – отписки от события
+• emit - уведомления подписчиков о наступлении события соответственно
+• onAll – для подписки на все события
+• offAll – для сброса всех подписчиков
+• trigger - генерирует заданное событие с заданными аргументами (коллбек триггер, генерирующий событие при вызове). Это позволяет передавать его в качестве обработчика события в другие классы. Эти классы будут генерировать события, не будучи при этом напрямую зависимыми от класса EventEmitter.
+,
+Тип Model (Модель), который отвечает за работу с данными (данные приходят с сервера, отправляются на сервер, помещаются в корзину), представлен классами Model, AppState, AuctionAPI.
 
-2.Класс Api
+Класс AppState
+Класс для для работы с данными приложения (получение значения, запись значения, изменение данных):
+
+Поля:
+o catalog: IProduct [] – массив товаров, которые отображаются в каталоге
+o basketList: IProduct [] – массив товаров, которые находятся в корзине
+o preview: string | null – id товара, у которого открыто превью
+o order: IOrder | null – массив данных первого этапа заказа
+o contacts: IContacts | null - массив данных второго этапа заказа
+
+Интерфейсы полей класса:
+
+export interface IProduct {
+id: string;
+title: string;
+price: number | null;
+description?: string;
+category?: string;
+image?: string;
+}
+
+export interface IAppState {
+catalog: IProduct [];
+basketList: IProduct [];
+preview: string | null;
+order: IOrder | null;
+contacts: IContacts | null;
+}
+
+export interface IOrderForm {
+paymentMethod?: boolean;
+address?: string;
+}
+
+export interface IContactsForm {
+email?: string;
+phone?: string;
+}
+
+export interface IOrder extends IOrderForm {
+items: string[]
+}
+
+export interface IContacts extends IContactsForm {
+items: string[]
+}
+
+Методы:
+• getButtonName – определяет лэйбл кнопки на превью товара в зависимости от того, добавлен товар в корзину или нет
+• getTotal – получает общее кол-во товаров в корзине
+• getTotalPrice – получает общую стоимость товаров в корзине
+• setCatalog(items: IProduct[]) – передает данные товаров для отрисовки каталога
+• setPreview(item: ProductItem) – передает данные товара для отрисовки превью
+• addBasketList(item: IProduct) – добавление товара в массив товаров корзины
+• clearBasket – метод для удаления данных из массива товаров корзины
+• getBasketList() – возвращает массив товаров, находящихся в корзине
+• changeBasketList – метод для удаления товаров из массива (корзины)
+• setOrderItems – добавляет товары из массива корзины в заказ
+• setOrderField – добавляет значения инпутов формы заказа в объект заказа
+• setContactsField – добавляет значения инпутов формы с контактными данными в объект заказа
+• validateOrder – предназначен для получения сообщения об ошибке валидации для формы заказа
+• validateContacts – предназначен для получения сообщения об ошибке валидации для формы с контактами
+
+Класс Api
 Реализует методы для работы с данными сервера.
 Поля:
 o readonly baseUrl: string;
@@ -70,103 +142,121 @@ o protected options: RequestInit;
 • post – отправка данных
 • delete – удаление данных
 
-3. Класс EventEmitter.
-   Реализует паттерн «Наблюдатель» и позволяет подписываться на события и уведомлять подписчиков о наступлении события.
-   Поля:
-   o protected events: Map<string, Set<EventHandler>>
-   Методы:
-   • On – для подписки на событие
-   • Off – отписки от события
-   • emit - уведомления подписчиков о наступлении события соответственно
-   • onAll – для подписки на все события
-   • offAll – для сброса всех подписчиков
-   • trigger - генерирует заданное событие с заданными аргументами (коллбек триггер, генерирующий событие при вызове). Это позволяет передавать его в качестве обработчика события в другие классы. Эти классы будут генерировать события, не будучи при этом напрямую зависимыми от класса EventEmitter.
+Класс AuctionAPI extends Api
+Кастомная реализация взаимодействия с сервером
+Методы:
+• getProduct() – получение карточек с сервера
+• postOrder() – отправка данных по заказу
 
-Общие компоненты
+Тип View (Вид или представление), который отвечает за отрисовку компонентов приложения, представлен классом Component и его наследниками.
 
-1. Класс Modal extends Component
-   Реализует открытие/закрытие модальных окон и их отрисовку.
-   Поля:
-   o protected \_closeButton: HTMLButtonElement;
-   o protected \_content: HTMLElement;
-   Методы:
-   • set content(value: HTMLElement) – перемещает контент в выбранный контейнер
-   • open()
-   • close()
-   • render(data: IModalData) - отрисовка модального окна
-   • get total() – получение общей стоимости товара для вывода инфо об успешном оформлении заказа
+Класс Component
+Абстрактный класс для отображения компонентов приложения: модального окна с карточкой, модального окна корзины и др.
+Поля:
+o protected readonly container: HTMLElement
+В конструктор передается container – HTML элемент, который следует отрисовать
 
-2. Класс Basket extends Component
-   Отображает открытую корзину. Реализует возможность удаления товаров и переход к оформлению.
-   Поля:
-   o protected \_productTemplate;
-   o protected \_products;
-   o protected \_storageKey;
-   Методы:
-   • save() – сохраняет инфо о товарах в localStorage
-   • load() – отображает инфо из localStorage
-   • removeProduct(id: string) – удаление товара
-   • get total() – получение общей стоимости товара
+Методы:
+• protected setText - Установить текстовое содержимое элемента
+• setDisabled - Сменить статус блокировки кнопки
+• protected setImage - Установить изображение с алтернативным текстом
+• render - Возвращает корневой DOM-элемент для отрисовки
 
-3. Класс Form extends Component
-   Отображает общие элементы формы, реализуют их функциональность
-   Поля:
-   o protected \_submit: HTMLButtonElement;
-   o protected \_errors: HTMLElement;
-   Методы:
-   • protected onInputChange – информирует об изменении значения инпута
-   • set valid(value: boolean) – устанавливает состояние кнопки (заблокирована или нет)
-   • set errors(value: string) – отображает информацию об ошибке валидации
-   • render(state) – отображает форму
+Класс Modal наследует класс Component
+Отрисовывает открытие/закрытие всех модальных окон приложения
+Поля:
+o protected \_closeButton: HTMLButtonElement; На кнопку закрытия окна в конструкторе вешается слушатель клика с колбэком.
+o protected \_content: HTMLElement;
+В конструктор передается контейнер и событие.
+Методы:
+• set content(value: HTMLElement) – помещает контент в выбранный контейнер
+• open()
+• close()
+• render(data: IModalData) - Возвращает корневой DOM-элемент для отрисовки
 
-4. Класс Success extends Component
-   Предназначен для отображения модального окно об информации об успешном заказе.
-   Поля:
-   o protected \_close: HTMLElement;
+Класс Basket наследует класс Component
+Отображает открытую корзину. Реализует возможность удаления товаров и переход к оформлению.
+Поля:
+o protected \_productTemplate;
+o protected \_products: Map<string, Product>;
+o protected \_storageKey: string;
+В конструктор передается контейнер и событие. В конструкторе создается пустой массив для товаров, которые будут помещаться в карзину.
 
-Другие компоненты:
+Методы:
+• set items – наполняет содержимым корзину: товарами, либо информацией о том, что корзина пуста
+• selected– блокирует кнопку, если корзина пустая
+• set total– устанавливает общую стоимость товаров
 
-1. Класс Card extends Component
-   Реализация отображения карточки товара: в каталоге, в модальном окне, в корзине
+Класс Form наследует класс Component
+Предназначен для отображения элементов формы
+Поля:
+o protected \_submit: HTMLButtonElement;
+o protected \_errors: HTMLElement;
+В конструктор передается контейнер и событие. На кнопку submit вешается вызов обработчика события.
+
+Методы:
+• protected onInputChange – информирует об изменении значения инпута
+• set valid(value: boolean) – устанавливает состояние кнопки (заблокирована или нет)
+• set errors(value: string) – отображает информацию об ошибке валидации
+• render(state) – отрисовывает форму
+
+Класс Success наследует класс Component
+Предназначен для отображения модального окно об информации об успешном заказе.
+Поля:
+o protected \_close: HTMLElement;
+o protected \_total: HTMLElement;
+В конструктор передается контейнер и действие при закрытии модального окна.
+Методы:
+• set total– устанавливает общую стоимость товаров
+
+Класс Card наследует класс Component
+Реализация отображения карточки товара: в каталоге, в модальном окне, в корзине
 
 Поля:
-o protected \_name: HTMLElement;
-o protected \_price: HTMLElement;
-o protected \_description?: HTMLElement;
 o protected \_category?: HTMLElement;
-o protected \_image?: HTMLElement;
+o protected \_title: HTMLElement;
+o protected \_image?: HTMLImageElement;
+o protected \_price: HTMLElement;
+В контейнер передается контейнер и имя блока.
 
 Методы:
-get id()
-set name()
-get name()
-set price ()
-get price ()
-set description ()
-set category ()
-set image ()
+• set id
+• get id
+• set title
+• get title
+• set image
+• set price
+• set category
 
-2. Класс Page extends Component
-   Реализует отображение основной страницы приложения.
-   Поля:
-   o protected \_counter: HTMLElement;
-   o protected \_catalog: HTMLElement;
-   o protected \_basket: HTMLElement;
-   Методы:
-   • set counter(value: number) – отображает кол-во товаров в корзине
-   • setProducts(items: HTMLElement[]) – отображает полученные с сервера карточки товаров
+Класс Card наследуется классами:
+CardCatalodItem – для отрисовки карточек товара в каталоге
+CardPreview – для отрисовки превью товара. Название кнопки отрисовывается в зависимости от того, добавлен товар в корзину или нет.
+CardListItem – для отрисовки товаров в модальном окне корзины с реализацией кнопки удаления товара.
 
-3. Класс Order extends Form
-   Поля:
-   o \_selectButton: HTMLElement;
+Класс Page наследует класс Component
+Реализует отображение основной страницы приложения.
+Поля:
+o protected \_counter: HTMLElement;
+o protected \_catalog: HTMLElement;
+o protected \_wrapper: HTMLElement;
+o protected \_basket: HTMLElement;
+В конструктор передается контейнер и событие. На корзину устанавливается слушатель события, который вызывает обработчик события – открытие модального окна с корзиной.
 
 Методы:
-• set paymentMethod (value: boolean) – метод для фиксации выбора способа оплаты
-• set address(value: string) – установить адрес
-• set email(value: string) – установить email
-• set phone(value: string) – установить телефон
+• set counter – устанавливает кол-во товаров в корзине
+• set catalog – наполняет каталог карточками товаров
+• set locked – устанавливает блокировку прокрутки
 
-4. Класс AuctionAPI extends Api
-   Кастомная реализация взаимодействия с сервером
-   Методы:
-   • getProduct() – получение карточек с сервера
+Класс Order наследует класс Form
+Поля:
+o protected \_buttonsCard: HTMLButtonElement;
+o protected \_buttonsCash: HTMLButtonElement;
+В конструктор передается контейнер и событие. Устанавливаются обработчики кнопок выбора оплаты для смены стилей и вызова обработчика, который отвечает за запись способа оплаты в объект заказа.
+Методы:
+• set address
+
+Класс Contacts наследует класс Form
+В конструктор передается контейнер и событие.
+Методы:
+• set email
+• set phone
