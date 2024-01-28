@@ -3,7 +3,7 @@ import './scss/styles.scss';
 import {AuctionAPI} from "./components/AuctionAPI";
 import {API_URL, CDN_URL} from "./utils/constants";
 import {EventEmitter} from "./components/base/events";
-import {AppState, CatalogChangeEvent, ProductItem} from "./components/AppData";
+import {AppState} from "./components/AppData";
 import {Page} from "./components/Page";
 import {CardPreview, CardListItem, CardCatalodItem} from "./components/Card";
 import {cloneTemplate, ensureElement} from "./utils/utils";
@@ -40,7 +40,7 @@ api.getProducts()
     console.error(err);
   });
 
-events.on<CatalogChangeEvent>('items:changed', () => {
+events.on('items:changed', () => {
   page.catalog = appData.catalog.map(item => {
     const card = new CardCatalodItem('card', cloneTemplate(cardCatalogTemplate), {
       onClick: () => events.emit('card:select', item)
@@ -55,11 +55,15 @@ events.on<CatalogChangeEvent>('items:changed', () => {
   });
 });
 
-events.on('card:select', (item: ProductItem) => {
+events.on('card:select', (item: IProduct) => {
   appData.setPreview(item);
 });
 
-events.on('preview:changed', (item: ProductItem) => {
+events.on('counter:changed', () => {
+  page.counter = String(appData.basketList.length);
+});
+
+events.on('preview:changed', (item: IProduct) => {
     
   const card = new CardPreview('card', cloneTemplate(cardPreviewTemplate), {
     onClick: () => {
@@ -71,12 +75,12 @@ events.on('preview:changed', (item: ProductItem) => {
           title: item.title,
           price: item.price,
         });
-        page.counter = String(appData.basketList.length);
+        events.emit('counter:changed');
         events.emit('basket:changed');
         card.button = appData.getButtonName(item.title);
         } else {
           appData.changeBasketList(item.id);
-          page.counter = String(appData.basketList.length);
+          events.emit('counter:changed');
           events.emit('basket:changed');
           card.button = appData.getButtonName(item.title);
         }
@@ -106,7 +110,7 @@ events.on('basket:open', () => {
 events.on('item:remove', (item: IProduct) => {
   appData.changeBasketList(item.id);
   events.emit('basket:changed');
-  page.counter = String(appData.getTotal());
+  events.emit('counter:changed');
   basket.total = `${appData.getTotalPrice()} синапсов`;
 });
 
@@ -133,7 +137,7 @@ events.on('formOrderErrors:change', (errors: Partial<IOrderForm>) => {
 events.on('formContactsErrors:change', (errors: Partial<IOrderForm>) => {
   const { email, phone } = errors;
   contacts.valid = !email && !phone;
-  order.errors = Object.values({ phone, email }).filter(i => !!i).join('; ');
+  contacts.errors = Object.values({ phone, email }).filter(i => !!i).join('; ');
 });
 
 events.on(/^order\..*:change/, (data: { field: keyof IOrderForm, value: string }) => {
@@ -180,17 +184,26 @@ events.on('order:submit', () => {
 });
 
 events.on('contacts:submit', () => {
-  const success = new Success(cloneTemplate(successTemplate), {
-    onClick: () => {
-      modal.close();
-      appData.clearBasket();
-    }
-  });
-
-  modal.render({
-    content: success.render({})
+  api.postOrder(appData.order)
+  .then((result) => {
+    
+    const success = new Success(cloneTemplate(successTemplate), {
+      onClick: () => {
+        modal.close();
+        appData.clearBasket();
+        events.emit('counter:changed');
+        events.emit('basket:changed');
+      }
     });
-    success.total = `Списано ${appData.getTotalPrice()} синапсов`;
+  
+    modal.render({
+      content: success.render({})
+      });
+      success.total = `Списано ${appData.getTotalPrice()} синапсов`;
+  })
+  .catch(err => {
+    console.error(err);
+  });
 });
 
 events.on('modal:open', () => {

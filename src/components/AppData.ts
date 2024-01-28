@@ -1,19 +1,6 @@
 import {Model} from "./base/Model";
 import {IProduct, IAppState, IOrder, IOrderForm, FormErrors} from "../types/index";
 
-export type CatalogChangeEvent = {
-  catalog: ProductItem[]
-};
-
-export class ProductItem extends Model<IProduct> {
-  id: string; 
-  title: string; 
-  price: number | null; 
-  description?: string; 
-  category?: string; 
-  image?: string;
-}
-
 export class AppState extends Model<IAppState> {
   catalog: IProduct [];
   basketList: IProduct [] = [];
@@ -48,11 +35,11 @@ export class AppState extends Model<IAppState> {
   }
 
   setCatalog(items: IProduct[]) {
-    this.catalog = items.map(item => new ProductItem(item, this.events));
-    this.emitChanges('items:changed', { catalog: this.catalog });
+    this.catalog = items;
+    this.emitChanges('items:changed', this.catalog);
   }
 
-  setPreview(item: ProductItem) {
+  setPreview(item: IProduct) {
     this.preview = item.id;
     this.emitChanges('preview:changed', item);
   }
@@ -74,8 +61,8 @@ export class AppState extends Model<IAppState> {
   }
 
   setOrderItems() {
-    this.order.items = this.order.items.concat(this.basketList);
-    this.order.total = this.order.items.length;
+    this.order.items = this.basketList.map(item => item.id);
+    this.order.total = this.getTotalPrice();
   }
 
   setOrderField(field: keyof IOrderForm, value: string) {
@@ -97,7 +84,7 @@ export class AppState extends Model<IAppState> {
   validateOrder() {
       const errors: typeof this.formErrors = {};
       if (!this.order.address) {
-        errors.email = 'Необходимо указать адрес';
+        errors.address = 'Необходимо указать адрес';
       }
       
       this.formErrors = errors;

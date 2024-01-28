@@ -3,14 +3,15 @@
 
 .modal {
   @include mixins.sublayer;
-  height: max-content;
+  min-height: 100%;
   position: absolute;
+  box-sizing: border-box;
   display: none;
-  justify-content: center;
   background-color: $overlayBackground;
   z-index: 100;
   padding-top: 5vh;
   padding-bottom: 5vh;
+  align-items: center;
 
   &_active {
     display: flex;
@@ -21,7 +22,7 @@
     @include mixins.flex(column);
     gap: $defaultPadding;
     background-color: $background;
-    min-height: 90vmin;
+    max-height: 90vmin;
     border-radius: 3rem;
     box-sizing: border-box;
     position: relative;

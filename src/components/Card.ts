@@ -84,6 +84,10 @@ export class CardPreview extends Card {
     }
   }
 
+  set description(value: string) {
+    this.setText(this._description, value);
+  }
+
   set button(value: string) {
     this.setText(this._button, value);
   }

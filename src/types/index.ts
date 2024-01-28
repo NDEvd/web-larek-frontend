@@ -34,7 +34,7 @@ export interface IOrderForm {
 };
   
 export interface IOrder extends IOrderForm {
-  items: IProduct[]
+  items: string []
 }
 
 export type FormErrors = Partial<Record<keyof IOrder, string>>;
