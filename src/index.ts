@@ -186,20 +186,20 @@ events.on('order:submit', () => {
 events.on('contacts:submit', () => {
   api.postOrder(appData.order)
   .then((result) => {
-    
+    appData.clearBasket();
+    events.emit('counter:changed');
+    events.emit('basket:changed');
+
     const success = new Success(cloneTemplate(successTemplate), {
       onClick: () => {
         modal.close();
-        appData.clearBasket();
-        events.emit('counter:changed');
-        events.emit('basket:changed');
       }
     });
   
     modal.render({
       content: success.render({})
       });
-      success.total = `Списано ${appData.getTotalPrice()} синапсов`;
+      success.total = `Списано ${appData.order.total} синапсов`;
   })
   .catch(err => {
     console.error(err);
